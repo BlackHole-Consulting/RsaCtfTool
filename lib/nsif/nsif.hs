@@ -22,25 +22,27 @@ import Math.NumberTheory.Powers.Modular
 -- import Math.NumberTheory.Powers.Squares
 -- import Math.NumberTheory.Powers
 import Math.NumberTheory.Roots
+import Math.NumberTheory.Logarithms
 import Codec.Crypto.RSA.Pure
 
 
 prim, primb :: Integer -> Integer
-prim = P.unPrime . P.nextPrime 
+prim  = P.unPrime . P.nextPrime 
 primb = P.unPrime . P.precPrime
 
 nsi n r2 b e 
-	| n == n2 = (r1,r2)
-	| otherwise = nsi n (r2-1) b e
-	where
-	r1 = div (n - (b^e*(b^e+r2))) (b^e+r2)
-	-- r1 = 1
-	n2 = (r1 + b^e )*(b^e + r2)
+   | r == 0    = (r1, r2)
+   | otherwise = nsi n (r2 - 1) b e
+   where
+   n1 =  r2 + b^e
+   (d, r) = divMod n n1
+   r1 = d - b^e
+   -- r1 = 1
 
 
-ncr n b e t = head $ filter (\(_,w)-> w/=1 && w/=n ) 
-   $ map (\x-> (n, (gcd n ((powMod x (n^2 - x^2) n) - x ))) ) 
-   $ map (\x-> x + 3)  [0 .. t] -- [(e^b..e^b+t] 
+ncr n b e t = head $ filter (\(_, w) -> w /= 1 && w /= n ) 
+   $ map (\x -> (n, gcd n ((powMod x (n^2 - x^2) n) - x )) ) 
+   $ map (\x -> x + 3)  [0 .. t] -- [(e^b .. e^b + t] 
 
 
 loadprimes = do 
@@ -53,31 +55,41 @@ loadprimes = do
 
 powRoot = minimum . intpowroot
 
+intpowroot n =  filter (\(_, f, g) -> f^g <= n) 
+   $ concatMap (\x -> map (\y -> (n - x^y, x, y) ) [2 .. 512]) [2 .. 512]
 
-bestroot n = minimum $ filter (\(_,e,_)-> e /= n ) 
-   $ map (\x-> (n - (integerRoot x n)^x, (integerRoot x n), x) ) [1 .. 1000]
+-- bestroot n = minimum $ map (\ex -> 
+      -- let base = integerRoot ex n 
+      -- in (n - base^ex, base, ex) 
+   -- ) [2 .. integerLog2' n]
+   
+bestroot n = minimum $ 
+   [ (n - base^ex, base, ex) 
+   | ex   <- [2 .. integerLog2' n]
+   , base <- [integerRoot ex n] ]
 
-powDiv n o
-   | rest <= 2 = (b,e) : o
-   | otherwise = powDiv rest ((b,e) : o)
+
+powDiv = powDiv' []
    where
-   (rest,b,e) = bestroot n
+   powDiv' out n 
+      | n < 0     = error "Negative argument not allowed. "
+      | n == 0    = out
+      | n < 4     = (n, 1) : out
+      | otherwise = powDiv' ((base, ex) : out) rest
+      where
+      (rest, base, ex) = bestroot n
       
-
-intpowroot n =  filter (\(_,f,g)-> f^g <= n) 
-   $ concatMap (\x-> map (\y-> (n - x^y, x, y) ) [2 .. 512]) [2 .. 512]
-
 
 {- | Returns all the perfect powers of the bitlength 'b' -}
 bitlengthPowers b = concatMap (rangePowers (ini, 2*ini)) exponents
    where
    ini = 2^b
    exponents = takeWhile (<= b) primelist -- reverse for up-down exponents
-   primelist = fmap P.unPrime primes 
+   primelist = map P.unPrime primes 
 
 
 {- | Returns all the `e` powers in the range [ini inclusive, end exclusive). -}
-rangePowers (ini, end) e = dropWhile (< ini) . fmap (^ e)
+rangePowers (ini, end) e = dropWhile (< ini) . map (^ e)
    $ [integerRoot e ini .. integerRoot e (end - 1)]
 
 
@@ -88,22 +100,22 @@ rangePowers (ini, end) e = dropWhile (< ini) . fmap (^ e)
 
 
 
-bestpow n = head $ filter (< n) $ map (\x-> map (\y-> y^x ) [1 .. 1000]) [1 .. 15]
+bestpow n = head $ filter (< n) $ map (\x -> map (^ x) [1 .. 1000]) [1 .. 15]
 
 -- supcar primespair o
-supcar [p] o    = lcm o p
-supcar (p:to) o = supcar to $ lcm o p
+supcar [p] o    = lcm p o
+supcar (p:to) o = supcar to $ lcm p o
 
 
 nsifc n tries
-   | out2 /= 1 && out2 /= n = (div n out2,out2) 
-   | out  /= 1 && out  /= n = (div n out, out)
-   | out3 /= 1 && out3 /= n = (div n out3,out3) 
-   | out4 /= 1 && out4 /= n = (div n out4,out4)
-   | out5 /= 1 && out5 /= n = (div n out5,out5) 
-   | out6 /= 1 && out6 /= n = (div n out6,out6)
-   | out7 /= 1 && out7 /= n = (div n out7,out7) 
-   | out8 /= 1 && out8 /= n = (div n out8,out8)
+   | out  /= 1 && out  /= n   = (div n out, out)
+   | out2 /= 1 && out2 /= n   = (div n out2,out2) 
+   | out3 /= 1 && out3 /= n   = (div n out3,out3) 
+   | out4 /= 1 && out4 /= n   = (div n out4,out4)
+   | out5 /= 1 && out5 /= n   = (div n out5,out5) 
+   | out6 /= 1 && out6 /= n   = (div n out6,out6)
+   | out7 /= 1 && out7 /= n   = (div n out7,out7) 
+   | out8 /= 1 && out8 /= n   = (div n out8,out8)
 
    | otherwise = (0,0)
    where
@@ -164,8 +176,8 @@ primetosquare n = candidates ini (ini^2)
       x  = o2 - n + 1   -- (n - 1 + x) must be a perfect square 
 
 
-intPowBaseExp n = head $ map (\([a,b],c)-> [show c,a]) 
-   $ filter (\([_,r],_)-> r=="0")  
+intPowBaseExp n = head $ map (\([a,b], c) -> [show c,a]) 
+   $ filter (\([_, r], _) -> r == "0")  
    $ map (\x-> (splitOn "." $ show $ logBase x n, x)) [3 .. 3000]
 
 
@@ -180,7 +192,7 @@ nsif n tries
    -- primesc = nub $ sort $ map prim [1..n] 
    
    (d, divcar) = head $ reverse $ (1,1) : (filter (\(r,_)-> r/=1 ) 
-      $ map (\x-> (gcd n (tryperiod n (n^2 - x^2) x), x) ) 
+      $ map (\x -> (gcd n (tryperiod n (n^2 - x^2) x), x) ) 
       [2^base .. 2^base + tries])
 
 
@@ -190,7 +202,7 @@ main = do
     args <- getArgs                  -- IO [String]
     progName <- getProgName          -- IO String
     print args
-    let (n : st :  m : e) = args
+    let (n : st : m : e) = args
     -- let n = args !! 0
     -- let st = args !! 1
     -- let e = args !! 2
