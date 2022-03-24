@@ -81,8 +81,8 @@ if __name__ == "__main__":
         help="Extended dump of RSA private variables in --dumpkey mode - dp,dq,pinv,qinv).",
         action="store_true",
     )
-    parser.add_argument("--uncipherfile", help="uncipher a file", default=None)
-    parser.add_argument("--uncipher", help="uncipher a cipher", default=None)
+    parser.add_argument("--uncipherfile", help="uncipher a file, using commas to separate multiple paths", default=None)
+    parser.add_argument("--uncipher", help="uncipher a cipher, using commas to separate multiple ciphers", default=None)
     parser.add_argument(
         "--verbosity", help="verbose mode", choices=logger_levels.keys(), default="INFO"
     )
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-q", help="Specify the second prime number. format : int or 0xhex"
     )
-    parser.add_argument("-e", help="Specify the public exponent. format : int or 0xhex")
+    parser.add_argument("-e", help="Specify the public exponent, using commas to separate multiple exponents. format : int or 0xhex")
     parser.add_argument("--key", help="Specify the private key file.")
     parser.add_argument("--password", help="Private key password if needed.")
 
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--falzorize",
         type=int,
-        help="Show P Q, the factors  of N",
+        help="Show P Q, the factors of N",
         default=None,
     )
 
@@ -298,8 +298,7 @@ if __name__ == "__main__":
             tmpfile = tempfile.NamedTemporaryFile(delete=False)
             with open(tmpfile.name, "wb") as tmpfd:
                 tmpfd.write(
-                    RSA.construct((args.n, e), consistency_check=False).publickey().exportKey(),
-                    
+                    RSA.construct((args.n, e)).publickey().exportKey(),
                 )
             args.publickey.append(tmpfile.name)
 
@@ -415,9 +414,7 @@ if __name__ == "__main__":
 
         tmpfile = tempfile.NamedTemporaryFile()
         with open(tmpfile.name, "wb") as tmpfd:
-            tmpfd.write(
-                RSA.construct((35, 3), consistency_check=False).publickey().exportKey()
-            )
+            tmpfd.write(RSA.construct((35, 3)).publickey().exportKey())
             attackobj.attack_single_key(tmpfile.name, selected_attacks, test=True)
 
     # Attack multiple keys

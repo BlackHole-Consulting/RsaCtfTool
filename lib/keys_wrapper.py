@@ -34,7 +34,7 @@ def generate_keys_from_p_q_e_n(p, q, e, n):
     except (ValueError, TypeError):
         pass
 
-    pub_key = RSA.construct((n, e), consistency_check=False).publickey().exportKey()
+    pub_key = RSA.construct((n, e)).publickey().exportKey()
     return (pub_key, priv_key)
 
 
@@ -114,7 +114,11 @@ class PrivateKey(object):
 
         self.key = None
         if self.p is not None and self.q is not None and self.d is not None:
-            self.key = RSA.construct((self.n, self.e, self.d, self.p, self.q))
+            try:
+                # There is no CRT coefficient to construct a key if p equals q
+                self.key = RSA.construct((self.n, self.e, self.d, self.p, self.q))
+            except ValueError:
+                pass
         elif n is not None and e is not None and d is not None:
             try:
                 self.key = RSA.construct((self.n, self.e, self.d))
@@ -161,11 +165,11 @@ class PrivateKey(object):
 
         plain = []
         for c in cipher:
-            if self.n is not None and self.d is not None and self.key is None:
+            if self.n is not None and self.d is not None:
                 try:
                     cipher_int = int.from_bytes(c, "big")
                     m_int = powmod(cipher_int, self.d, self.n)
-                    m = binascii.unhexlify(hex(m_int)[2:]).decode()
+                    m = binascii.unhexlify(hex(m_int)[2:])
                     plain.append(m)
                 except:
                     pass
